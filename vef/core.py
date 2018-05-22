@@ -17,7 +17,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.externals import joblib
 
-FORMAT = '%(levelname)-7s %(asctime)-15s %(name)-20s %(message)s'
+FORMAT = '%(levelname)-7s %(asctime)-15s %(name)-15s %(message)s'
 logging.basicConfig(level='INFO', format=FORMAT)
 
 
@@ -232,6 +232,10 @@ class Classifier(RandomForestClassifier):
         logger = logging.getLogger(self.__class__.__name__)
         joblib.dump(self, output_filepath)
         logger.info("Classfier saved at {}".format(os.path.abspath(output_filepath)))
+
+    @staticmethod
+    def load(classifier_path):
+        return joblib.load(classifier_path)
 
 
 class VCFApply(_VCFExtract):

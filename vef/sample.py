@@ -30,6 +30,7 @@ if __name__ == '__main__':
     clf.fit(X, y)
     clf.save(vcf_tgt + ".RF")
 
+    clf = Classifier.load(vcf_tgt + ".RF")
     apply = VCFApply(vcf_sub, clf)
     apply.apply()
     apply.write_filtered(vcf_sub + ".VEFiltered.vcf")
