@@ -52,7 +52,7 @@ class _VCFExtract:
             # fields, samples, self.header, _ = allel.iter_vcf_chunks(self.filepath, fields='*')
             for i in list(self.features):
                 if i not in self.fields:
-                    self.logger.error("Error: {} field not in {}".format(i, self.filepath))
+                    self.logger.error("Error: {} field not in {}, we have {}".format(i, self.filepath, self.fields))
                     # print("Error: {} field not in {}".format(i, self.filepath))
                     exit(-1)
             data = allel.read_vcf(self.filepath, fields='*')
@@ -112,7 +112,8 @@ class VCFDataset:
         VAR_PREFIX = 'variants/'
         # fields, samples, headers, _ = allel.iter_vcf_chunks(self.hap_vcf, fields='*')
         mode_list = ['SNP', 'INDEL']
-        data = allel.read_vcf(self.hap_vcf.filepath, fields=['calldata/BVT', 'variants/POS', 'variants/CHROM'])
+        data = allel.read_vcf(self.hap_vcf.filepath, fields=['calldata/BVT', 'variants/Regions', 'variants/POS', 'variants/CHROM'])
+        conf_mask = data['variants/Regions'].astype(bool)
         # data, _, _ = self.hap_vcf.fetch_data('BOTH', ['calldata/BVT', 'variants/POS', 'variants/CHROM'])
         if mode.upper() in mode_list:
             extract_target_vartype = self._extract_factory(np.where(self.hap_vcf.samples == 'TRUTH')[0][0], mode.upper())
@@ -121,11 +122,11 @@ class VCFDataset:
             extract_target_vartype = self._extract_factory(np.where(self.hap_vcf.samples == 'TRUTH')[0][0], 'SNP')
             # print("Warning: {}".format(mode))
 
-        vartype = np.apply_along_axis(extract_target_vartype, 1, data['calldata/BVT'])
-        label_list = np.vstack((data['variants/POS'], vartype))
+        vartype = np.apply_along_axis(extract_target_vartype, 1, data['calldata/BVT'][conf_mask, :])
+        label_list = np.vstack((data['variants/POS'][conf_mask], vartype))
         idx = (vartype != -1)
         label_list = label_list[:, idx]
-        chrom_list = data['variants/CHROM'][idx]
+        chrom_list = data['variants/CHROM'][conf_mask][idx]
         chroms = np.unique(chrom_list)
         label_list = {chrom: label_list[:, np.where(chrom_list == chrom)[0]] for chrom in chroms}
         for key in label_list:
@@ -162,7 +163,7 @@ class VCFDataset:
         annotes = [data[ftr] for ftr in [VAR_PREFIX + 'POS'] + self.features]
         annotes = np.vstack((c if c.ndim == 1 else c[:, 0] for c in annotes))
         chrom_list = data[VAR_PREFIX + 'CHROM']
-        self.contigs = np.unique(chrom_list)
+        self.contigs = list(label_list)
         annotes_chrom = {ch: annotes[:, np.where(chrom_list == ch)[0]] for ch in self.contigs}
 
         # # merge labels
@@ -174,14 +175,14 @@ class VCFDataset:
         #         print("ERR: no 'truth file' or 'truth index list' usable.")
         #         exit(1)
 
-        for ch in annotes_chrom:
+        for ch in self.contigs:
             if ch not in label_list:
                 continue
             else:
                 annotes_idx = np.where(np.isin(annotes_chrom[ch][0], label_list[ch][0]))[0]
                 label_idx = np.where(np.isin(label_list[ch][0], annotes_chrom[ch][0]))[0]
                 self.dataset[ch] = np.vstack((annotes_chrom[ch][1:, annotes_idx], label_list[ch][1, label_idx])).transpose()
-                self.logger.debug(ch, np.shape(annotes_chrom[ch][1:, annotes_idx]), np.shape(label_list[ch][1, label_idx]))
+                self.logger.debug("CHROM:{}, {} {}".format(ch, np.shape(annotes_chrom[ch][1:, annotes_idx]), np.shape(label_list[ch][1, label_idx])))
                 idx = ~np.any(np.isnan(self.dataset[ch]), axis=1)
                 self.dataset[ch] = {'X': self.dataset[ch][idx, :-1], 'y': self.dataset[ch][idx, -1]}
         # np.savez_compressed(dataset_file, infos=features, chrom_data=dataset)
@@ -197,11 +198,13 @@ class VCFDataset:
         Returns:
 
         """
-        if contigs == '*':
+        if '*' in list(contigs):
             contig_list = self.contigs
         else:
             contig_list = []
-            for ctg in list(contigs):
+            if type(contigs) is not list:
+                contigs = [contigs]
+            for ctg in contigs:
                 if ctg not in self.contigs:
                     self.logger.warning("Requested contig {} not exist.".format(ctg))
                 contig_list.append(ctg)
@@ -213,10 +216,14 @@ class VCFDataset:
         np.savez_compressed(output_filepath, dataset=self.dataset)
         self.logger.info("Dataset saved to file {}".format(os.path.abspath(output_filepath)))
 
+    @staticmethod
+    def load(dataset_filepath):
+        return np.load(dataset_filepath)
+
 
 class Classifier(RandomForestClassifier):
     def __init__(self, features, n_trees=150):
-        super().__init__(n_estimators=n_trees)
+        super().__init__(criterion='gini', max_depth=20, n_estimators=n_trees)
         self.features = features
 
     def fit(self, X, y, sample_weight=None):
