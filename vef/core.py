@@ -224,6 +224,7 @@ class Classifier(RandomForestClassifier):
         logger.info("Begin training model")
         t0 = time.time()
         super().fit(X, y, sample_weight=sample_weight)
+        logger.debug("Importance: {}".format(super().feature_importances_))
         t1 = time.time()
         logger.info("Finish training model")
         logger.info("Elapsed time {:.3f}s".format(t1 - t0))
@@ -239,10 +240,11 @@ class Classifier(RandomForestClassifier):
 
 
 class VCFApply(_VCFExtract):
-    def __init__(self, filepath, classifier: Classifier):
+    def __init__(self, filepath, classifier: Classifier, vartype):
         super().__init__(filepath)
         self.classifier = classifier
-        self.data, _, self.snp_index = self.fetch_data('SNP', self.classifier.features)
+        self.vartype = vartype
+        self.data, _, self.vartype_index = self.fetch_data("BOTH", self.classifier.features) # temp
         self.mend_nan(self.data)
         self.predict_y = None
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -252,10 +254,13 @@ class VCFApply(_VCFExtract):
         clf_feature = set(self.classifier.features)
         # sym_diff = this_feature.symmetric_difference(clf_feature)
         if this_feature != clf_feature:
+            if len(clf_feature - this_feature) == 0:
+                pass
             self.logger.warning("Features not match! Missing features: {}, excessive features: {}".format(this_feature - clf_feature, clf_feature - this_feature))
 
     def apply(self):
         self.predict_y = self.classifier.predict(self.data)
+        self.predict_y_log_proba = self.classifier.predict_log_proba(self.data)
 
     def write_filtered(self, output_filepath):
         """
@@ -266,26 +271,34 @@ class VCFApply(_VCFExtract):
         Returns:
 
         """
-        pass_index = self.snp_index[np.where(self.predict_y == 1)[0]]
+        # pass_index = self.vartype_index[np.where(self.predict_y == 1)[0]]
 
-        if len(pass_index) == 0:
+        # if len(pass_index) == 0:
+        if np.sum(self.predict_y) == 0:
             self.logger.error("No passed variants.")
             # print("Attention! No passed variants.")
             return
-        len_is_pass = max(pass_index) + 1
-        is_pass = np.zeros(len_is_pass)
-        is_pass[pass_index] = 1
+        # last_pass_index = max(pass_index)
+        # is_pass = np.zeros(len_is_pass)
+        # is_pass[pass_index] = 1
         chunk_size = 10000
         self.logger.info("Start output filtered result to file {}".format(os.path.abspath(output_filepath)))
         t0 = time.time()
         chunk = []
         with open(self.filepath, 'r') as infile, open(output_filepath, 'w') as outfile:
             # iterate headers
-            def is_snp(x, y):
-                return len(x) == 1 and len(y) == 1
+            if self.vartype == 'SNP':
+                is_vartype = lambda x, y: len(x) == 1 and len(y) == 1
+            else:
+                is_vartype = lambda x, y: not(len(x) == 1 and len(y) == 1)
 
+            filter_written = False
             for line in infile:
                 if line.startswith("##"):
+                    if 'FILTER' in line and not filter_written:
+                        chunk.append('##FILTER=<ID=VEF_FILTERED,Description="VEF filtered">\n')
+                        chunk.append('##INFO=<ID=VEF,Number=1,Type=Float,Description="Log Probability of being true variants according to VEF">\n')
+                        filter_written = True
                     chunk.append(line)
                 elif line.startswith("#"):
                     fields = line[1:].split()
@@ -296,19 +309,23 @@ class VCFApply(_VCFExtract):
             idx_FILTER = fields.index("FILTER")
             idx_REF = fields.index("REF")
             idx_ALT = fields.index("ALT")
+            idx_INFO = fields.index("INFO")
             vcf_reader = csv.reader(infile, delimiter='\t')
             for num_row, row in enumerate(vcf_reader):
-                if is_snp(row[idx_REF], row[idx_ALT]):
-                    if num_row < len_is_pass:
-                        if is_pass[num_row]:
-                            row[idx_FILTER] = "PASS"
-                        else:
-                            row[idx_FILTER] = "VEF_FILTERED"
-                    else:
-                        row[idx_FILTER] = "VEF_FILTERED"
-                    chunk.append(row)
+                # if is_vartype(row[idx_REF], row[idx_ALT]):
+                # if num_row <= last_pass_index:
+                    # if is_pass[num_row]:
+                if self.predict_y[num_row]:
+                    row[idx_FILTER] = "PASS"
+                    row[idx_INFO] += (";VEF={:.4e}".format(self.predict_y_log_proba[num_row, 1]))
+                else:
+                    row[idx_FILTER] = "VEF_FILTERED"
+                    row[idx_INFO] += (";VEF={:.4e}".format(self.predict_y_log_proba[num_row, 1]))
+                # else:
+                #     row[idx_FILTER] = "VEF_FILTERED"
+                chunk.append(row)
                 if num_row % chunk_size == 0 and num_row > 0:
-                    outfile.write('\n'.join(['\t'.join(var) for var in chunk]))
+                    outfile.write('\n'.join(['\t'.join(var) for var in chunk]) + '\n')
                     chunk = []
             outfile.write('\n'.join(['\t'.join(var) for var in chunk]))
         t1 = time.time()
