@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim:fenc=utf-8
 #
-# Copyright ÃÂÃÂ© 2018 chuanyi5 <chuanyi5@illinois.edu>
+# Copyright © 2018 Chuanyi Zhang <chuanyi5@illinois.edu>
 #
 # Distributed under terms of the MIT license.
 
