@@ -1,10 +1,11 @@
-#! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# Copyright © 2018 Chuanyi Zhang <chuanyi5@illinois.edu>
-#
-# Distributed under terms of the MIT license.
-
 """
+VEF
+~~~
 
+Variant Ensemble Filter, an ensemble based filter for VCF files.
+
+:copyright: © 2018 by Chuanyi Zhang.
+:license: MIT, see LICENSE for more details.
 """
+from .core import *
