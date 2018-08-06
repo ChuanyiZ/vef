@@ -9,7 +9,7 @@
 Train and save VEF classifiers
 """
 import argparse
-from vef.core import VCFDataset, Classifier
+from vef import VCFDataset, Classifier
 
 def main():
     parser = argparse.ArgumentParser()

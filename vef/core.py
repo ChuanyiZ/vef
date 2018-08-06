@@ -66,7 +66,7 @@ class _VCFExtract:
             self.logger.warning("No such mode {}, using mode SNP.".format(mode))
             is_vartype = np.repeat(True, data[VAR_PREFIX + 'is_snp'].shape[0])
         vartype_index = np.where(is_vartype)[0]
-        annotes = [data[ftr][is_vartype] for ftr in features]
+        annotes = [data[ftr][is_vartype] for ftr in self.features]
         annotes = np.vstack((c if c.ndim == 1 else c[:, 0] for c in annotes))
         return annotes.transpose(), self.features, vartype_index
 

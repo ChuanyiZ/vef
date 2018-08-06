@@ -10,7 +10,7 @@ Apply classifiers
 """
 
 import argparse
-from vef.core import VCFApply, Classifier
+from vef import VCFApply, Classifier
 
 def main():
     parser = argparse.ArgumentParser()

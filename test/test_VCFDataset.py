@@ -8,9 +8,11 @@
 """
 
 """
-import vef
-import argparse
+from vef import VCFDataset
+import os
 from unittest import TestCase, main
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestVCFDataset(TestCase):
@@ -18,18 +20,7 @@ class TestVCFDataset(TestCase):
         pass
 
     def test_compare(self):
-        self.fail()
+        pass
 
     def test_get_dataset(self):
-        self.fail()
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("happy", help="hap.py annoted VCF file")
-    parser.add_argument("target", help="target pipeline VCF file")
-
-    args = parser.parse_args()
-    vcf_hap = args.happy
-    taget = args.target
-    main()
+        pass

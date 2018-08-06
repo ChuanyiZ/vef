@@ -2,9 +2,28 @@
 Variant Ensemble Filter, an ensemble based filter for VCF files.
 
 ## Installation
-_TODO_
+Installing in a virtual environmant is recommended.
+1. Download
+    ```bash
+    git clone git@github.com:ChuanyiZ/vef.git
+    ```
+2. install requirements
+    ```bash
+    cd <path>
+    pip install -r requirements.txt
+    ```
+3. install scikit-allel
+    ```bash
+    pip install scikit-allel
+    ```
+4. install using pip
+    `pip install ./`
 
 ## Usage
+Use GATK select-Variants tool to split SNPs and INDELS
+```
+TODO
+```
 ### Training
 Ingredients:
 - `gold_standard.vcf`: GIAB's NA12878 Gold Standard VCF
