@@ -250,7 +250,7 @@ class VCFApply(_VCFExtract):
     def __init__(self, filepath, classifier: Classifier, vartype):
         super().__init__(filepath)
         self.classifier = classifier
-        self.vartype = vartype
+        self.vartype = vartype.upper()
         self.data, _, self.vartype_index = self.fetch_data("BOTH", self.classifier.features) # temp
         self.mend_nan(self.data)
         self.predict_y = None

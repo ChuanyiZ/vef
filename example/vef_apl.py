@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim:fenc=utf-8
 #
-# Copyright ÃÂÃÂ© 2018 chuanyi5 <chuanyi5@illinois.edu>
+# Copyright © 2018 chuanyi5 <chuanyi5@illinois.edu>
 #
 # Distributed under terms of the MIT license.
 
@@ -14,11 +13,20 @@ import argparse
 from vef.core import VCFApply, Classifier
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("clf_file", help="target pipeline VCF file")
-    parser.add_argument("subject", help="subject VCF file")
-    parser.add_argument("suffix", help="suffix of filtered VCF file")
-    parser.add_argument("--mode", help="mode, SNP or INDEL")
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description='''\
+Apply a pre-trained filter
+-------------------------
+Example of use
+
+python vef_apl.py --clf_file path/to/NA12878.vcf.vef_snp.clf --subject path/to/subject.snp.vcf --suffix vef --mode SNP
+            ''')
+    requiredNamed = parser.add_argument_group("required named arguments")
+    requiredNamed.add_argument("--clf_file", help="target pipeline VEF filter model", required=True)
+    requiredNamed.add_argument("--subject", help="subject VCF file", required=True)
+    requiredNamed.add_argument("--suffix", help="suffix of filtered VCF file", required=True)
+    requiredNamed.add_argument("--mode", help="mode, SNP or INDEL", required=True)
 
     args = parser.parse_args()
     clf_file = args.clf_file
