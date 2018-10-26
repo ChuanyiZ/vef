@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2017 chuanyi5 <chuanyi5@illinois.edu>
+# Copyright © 2018 Chuanyi Zhang <chuanyi5@illinois.edu>
 #
 # Distributed under terms of the MIT license.
 
@@ -9,7 +9,6 @@
 
 """
 import unittest
-from unittest import TestCase
 import numpy as np
 import os
 from numpy.testing import *
@@ -18,7 +17,7 @@ from vef.core import _VCFExtract
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class Test_VCFExtract(TestCase):
+class Test_VCFExtract(unittest.TestCase):
     def setUp(self):
         self.test_features = np.array(range(9), dtype=float).reshape([1, -1]).repeat(10, axis=0)
         self.test_features[[3, 7, 2], [5, 6, 0]] = np.nan

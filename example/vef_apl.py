@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2018 chuanyi5 <chuanyi5@illinois.edu>
+# Copyright © 2018 Chuanyi Zhang <chuanyi5@illinois.edu>
 #
 # Distributed under terms of the MIT license.
 
@@ -10,7 +10,7 @@ Apply classifiers
 """
 
 import argparse
-from vef.core import VCFApply, Classifier
+from vef import VCFApply, Classifier
 
 def main():
     parser = argparse.ArgumentParser(

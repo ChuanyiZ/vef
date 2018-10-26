@@ -1,14 +1,15 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim:fenc=utf-8
-#
-# Copyright Â© 2018 chuanyi5 <chuanyi5@illinois.edu>
-#
-# Distributed under terms of the MIT license.
+"""
+vef.utils
+~~~~~~~~~
 
+This module contains utility functions that are useful besides core classes.
+
+:copyright: © 2018 by Chuanyi Zhang.
+:license: MIT, see LICENSE for more details.
 """
 
-"""
 import numpy as np
 from sklearn.metrics import roc_curve, roc_auc_score
 
@@ -24,7 +25,7 @@ class Metrics(object):
         self.FN = float(np.logical_and(label, np.logical_not(pred)).sum())
         self.FP = float(np.logical_and(np.logical_not(label), pred).sum())
         self.TN = float(np.logical_and(np.logical_not(label), np.logical_not(pred)).sum())
-        self.accu = (self.TP + self.TN) / (self.TP+self.FP+self.TN+self.FN)
+        self.accu = (self.TP + self.TN) / (self.TP + self.FP + self.TN + self.FN)
         self.preci = self.TP / (self.TP + self.FP)
         self.sensi = self.TP / (self.TP + self.FN)
         self.f1_measure = 2 * self.TP / (2 * self.TP + self.FP + self.FN)

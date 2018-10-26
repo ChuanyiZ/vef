@@ -1,13 +1,15 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# Copyright © 2018 chuanyi5 <chuanyi5@illinois.edu>
-#
-# Distributed under terms of the MIT license.
+"""
+vef.core
+~~~~~~~~
 
+This module implements the core features of VEF.
+
+:copyright: © 2018 by Chuanyi Zhang.
+:license: MIT, see LICENSE for more details.
 """
 
-"""
 import allel
 import time
 import logging
@@ -22,6 +24,8 @@ logging.basicConfig(level='INFO', format=FORMAT)
 
 
 class _VCFExtract:
+    """Extract data from VCF file."""
+
     def __init__(self, filepath):
         self.filepath = filepath
         self.fields, self.samples, self.header, _ = allel.iter_vcf_chunks(filepath, fields='*')
@@ -30,15 +34,11 @@ class _VCFExtract:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def fetch_data(self, mode, features=None):
-        """
-        Args:
-            mode (str):
-            features (list):
+        """Fetch data from VCF file.
 
-        Returns:
-            data (Numpy.array):
-            features (list):
-            vartype_index (Numpy.array):
+        :param str mode: kind of variants training on: 'SNP', 'INDEL' or 'BOTH'.
+        :param list features:
+        :returns union: data (Numpy.array), features (list), vartype_index (Numpy.array).
         """
         VAR_PREFIX = 'variants/'
         if features is None:
@@ -78,9 +78,16 @@ class _VCFExtract:
 
 
 class VCFDataset:
-    def __init__(self, hap_filepath, target_filepath, mode):
+    """Compare VCF files and prepare features/labels for training.
+
+    :param str hap_filepath: filepath to happy output VCF.
+    :param str specimen_filepath: filepath to specimen VCF.
+    :param str mode: kind of variants training on: 'SNP' or 'INDEL'.
+    """
+
+    def __init__(self, hap_filepath, specimen_filepath, mode):
         self.hap_vcf = _VCFExtract(hap_filepath)
-        self.target_vcf = _VCFExtract(target_filepath)
+        self.specimen_vcf = _VCFExtract(specimen_filepath)
         self.dataset = {}
         self.contigs = []
         self.features = []
@@ -91,12 +98,10 @@ class VCFDataset:
     def _extract_factory(truth_idx, vartype):
         """
         Create function that check if this variant is vartype
-        Args:
-            truth_idx (Numpy.array): the index of 'TRUTH' in list of samples in outcome of hap.py
-            vartype (str): variant type, SNP or INDEL
+        :param truth_idx: the index of 'TRUTH' in list of samples in outcome of hap.py
+        :param str vartype: variant type, SNP or INDEL
 
-        Returns:
-            function: the function that check if vartype
+        :returns function: the function that check if vartype
         """
         def inner(arr):
             if arr[truth_idx] == vartype and arr[1 - truth_idx] == vartype:
@@ -107,7 +112,7 @@ class VCFDataset:
                 return -1
         return inner
 
-    def _compare(self, mode: str):
+    def _compare(self, mode):
         self.logger.info("Start extracting label from {}".format(os.path.abspath(self.hap_vcf.filepath)))
         VAR_PREFIX = 'variants/'
         # fields, samples, headers, _ = allel.iter_vcf_chunks(self.hap_vcf, fields='*')
@@ -141,15 +146,15 @@ class VCFDataset:
         #         label_list, f, protocol=pickle.HIGHEST_PROTOCOL)
         # return label_list
 
-        # fields, samples, headers, _ = allel.iter_vcf_chunks(self.target_vcf.filepath, fields='*')
+        # fields, samples, headers, _ = allel.iter_vcf_chunks(self.specimen_vcf.filepath, fields='*')
         # fields = [k for k in list(headers.infos.keys()) + ['QUAL']]
-        data = allel.read_vcf(self.target_vcf.filepath, fields='*')
-        # data, fields, _ = self.target_vcf.fetch_data(mode)
+        data = allel.read_vcf(self.specimen_vcf.filepath, fields='*')
+        # data, fields, _ = self.specimen_vcf.fetch_data(mode)
 
-        self.logger.info("Start extracting variants from {}".format(os.path.abspath(self.target_vcf.filepath)))
+        self.logger.info("Start extracting variants from {}".format(os.path.abspath(self.specimen_vcf.filepath)))
         # feature selection
         num_var = np.shape(data[VAR_PREFIX + 'REF'])[0]
-        self.features = [(VAR_PREFIX + k) for k in list(self.target_vcf.header.infos.keys()) + ['QUAL']]
+        self.features = [(VAR_PREFIX + k) for k in list(self.specimen_vcf.header.infos.keys()) + ['QUAL']]
         self.features = [ftr for ftr in self.features if np.issubdtype(data[ftr].dtype, np.number)]
         self.features = [ftr for ftr in self.features if np.sum(np.isnan(data[ftr])) < 0.01 * num_var]
         self.features = [ftr for ftr in self.features if np.nanvar(data[ftr]) >= 0.1]
@@ -192,11 +197,9 @@ class VCFDataset:
     def get_dataset(self, contigs):
         """
         Return features and labels of request contigs. If contigs is '*', return all data.
-        Args:
-            contigs (str):
 
-        Returns:
-
+        :param list contigs: contigs requested.
+        :returns union: features: X, labels: y.
         """
         if '*' in list(contigs):
             contig_list = self.contigs
@@ -222,6 +225,8 @@ class VCFDataset:
 
 
 class Classifier(RandomForestClassifier):
+    """Random Forest classifier."""
+
     def __init__(self, features, n_trees=150):
         super().__init__(criterion='gini', max_depth=20, n_estimators=n_trees)
         self.features = features
@@ -247,10 +252,17 @@ class Classifier(RandomForestClassifier):
 
 
 class VCFApply(_VCFExtract):
-    def __init__(self, filepath, classifier: Classifier, vartype):
+    """Apply the pre-trained classifier on a VCF file.
+
+    :params str filepath: filepath to unfiltered VCF file.
+    :params Classifier classifier: pre-trained classifier.
+    :params str mode: kind of variants training on: 'SNP' or 'INDEL'.
+    """
+
+    def __init__(self, filepath, classifier: Classifier, mode):
         super().__init__(filepath)
         self.classifier = classifier
-        self.vartype = vartype.upper()
+        self.vartype = mode.upper
         self.data, _, self.vartype_index = self.fetch_data("BOTH", self.classifier.features) # temp
         self.mend_nan(self.data)
         self.predict_y = None
@@ -272,11 +284,8 @@ class VCFApply(_VCFExtract):
     def write_filtered(self, output_filepath):
         """
         Write filtered VCF file, SNPs only and change the FILTER field to PASS or VEF_FILTERED
-        Args:
-            output_filepath:
 
-        Returns:
-
+        :params output_filepath: output filepath.
         """
         # pass_index = self.vartype_index[np.where(self.predict_y == 1)[0]]
 
