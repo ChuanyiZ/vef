@@ -37,7 +37,7 @@ python vef_apl.py --clf_file path/to/NA12878.vcf.vef_snp.clf --subject path/to/s
     clf = Classifier.load(clf_file)
     apply = VCFApply(vcf_sub, clf, mode)
     apply.apply()
-    apply.write_filtered(vcf_sub + f".{suf}.vcf")
+    apply.write_filtered(vcf_sub + ".{}.vcf".format(suf))
 
 if __name__ == '__main__':
     main()

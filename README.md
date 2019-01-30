@@ -12,7 +12,7 @@ Installing in a virtual environmant is recommended.
     ```
 2. install requirements
     ```bash
-    cd <path/to/vef>
+    cd path/to/vef
     pip install -r requirements.txt
     ```
 3. install scikit-allel
@@ -23,6 +23,15 @@ Installing in a virtual environmant is recommended.
     ```bash
     pip install ./
     ```
+## Example scripts
+
+Example python scripts are located in `example` directory. There's a `test.sh` script to run them. VCF files for testing are located in `example/data`, including chromosome 11 and 20 of Human sample NA12878 (HG001) (SNPs and INDELs are already separated). You can also download BAM files from <ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/> and generate VCF of your own by running GATK's best practice pipeline.
+
+```bash
+cd example
+./test.sh
+```
+
 
 ## Usage
 
@@ -33,7 +42,7 @@ java -jar <path/to/GenomeAnalysisTK.jar> -T SelectVariants -R <path/to/human_g1k
 java -jar <path/to/GenomeAnalysisTK.jar> -T SelectVariants -R <path/to/human_g1k_v37.fasta> -V <path/to/target/vcf> -selectType INDEL -o output.indel.vcf
 ```
 
-For detail document, go to [GATK's site](https://software.broadinstitute.org/gatk/documentation/tooldocs/3.8-0/org_broadinstitute_gatk_tools_walkers_variantutils_SelectVariants.php)
+For detail document of `SelectVariants`, please go to [GATK's site](https://software.broadinstitute.org/gatk/documentation/tooldocs/3.8-0/org_broadinstitute_gatk_tools_walkers_variantutils_SelectVariants.php)
 
 ### Training
 

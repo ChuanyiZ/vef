@@ -15,9 +15,12 @@ import time
 import logging
 import csv
 import os
+import binascii
+import gzip
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.externals import joblib
+from sklearn.model_selection import KFold, GridSearchCV
 
 FORMAT = '%(levelname)-7s %(asctime)-15s %(name)-15s %(message)s'
 logging.basicConfig(level='INFO', format=FORMAT)
@@ -224,19 +227,36 @@ class VCFDataset:
         return np.load(dataset_filepath)
 
 
-class Classifier(RandomForestClassifier):
+class Classifier:
     """Random Forest classifier."""
 
     def __init__(self, features, n_trees=150):
-        super().__init__(criterion='gini', max_depth=20, n_estimators=n_trees)
+        self.rf = RandomForestClassifier(criterion='gini', max_depth=20, n_estimators=n_trees)
         self.features = features
 
     def fit(self, X, y, sample_weight=None):
         logger = logging.getLogger(self.__class__.__name__)
         logger.info("Begin training model")
         t0 = time.time()
-        super().fit(X, y, sample_weight=sample_weight)
-        logger.debug("Importance: {}".format(super().feature_importances_))
+        self.rf.fit(X, y, sample_weight=sample_weight)
+        logger.info("Training a".format())
+        logger.debug("Importance: {}".format(self.rf.feature_importances_))
+        t1 = time.time()
+        logger.info("Finish training model")
+        logger.info("Elapsed time {:.3f}s".format(t1 - t0))
+
+    def gridsearch(self, X, y, k_fold=5, n_jobs=2):
+        logger = logging.getLogger(self.__class__.__name__)
+        logger.info("Begin grid search")
+        t0 = time.time()
+        kfold = KFold(n_splits=k_fold, shuffle=True)
+        parameters = {
+            'n_estimators': list(range(50, 251, 10))
+        }
+        self.rf = GridSearchCV(self.rf, parameters, scoring='f1', n_jobs=n_jobs, cv=kfold, refit=True)
+        self.rf.fit(X, y)
+        print(self.rf.cv_results_, '\n', self.rf.best_params_, '\n', self.rf.grid_scores_, '\n')
+        logger.debug("Grid_scores: {}".format(self.rf.grid_scores_))
         t1 = time.time()
         logger.info("Finish training model")
         logger.info("Elapsed time {:.3f}s".format(t1 - t0))
@@ -245,6 +265,15 @@ class Classifier(RandomForestClassifier):
         logger = logging.getLogger(self.__class__.__name__)
         joblib.dump(self, output_filepath)
         logger.info("Classfier saved at {}".format(os.path.abspath(output_filepath)))
+
+    def predict(self, *args, **kwargs):
+        return self.rf.predict(*args, **kwargs)
+
+    def predict_proba(self, *args, **kwargs):
+        return self.rf.predict_proba(*args, **kwargs)
+
+    def predict_log_proba(self, *args, **kwargs):
+        return self.rf.predict_log_proba(*args, **kwargs)
 
     @staticmethod
     def load(classifier_path):
@@ -281,6 +310,10 @@ class VCFApply(_VCFExtract):
         self.predict_y = self.classifier.predict(self.data)
         self.predict_y_log_proba = self.classifier.predict_log_proba(self.data)
 
+    def _is_gzip(self, file):
+        with open(file, 'rb') as f:
+            return binascii.hexlify(f.read(2)) == b'1f8b'
+
     def write_filtered(self, output_filepath):
         """
         Write filtered VCF file, SNPs only and change the FILTER field to PASS or VEF_FILTERED
@@ -298,10 +331,15 @@ class VCFApply(_VCFExtract):
         # is_pass = np.zeros(len_is_pass)
         # is_pass[pass_index] = 1
         chunk_size = 10000
+        is_gzip = self._is_gzip(self.filepath)
         self.logger.info("Start output filtered result to file {}".format(os.path.abspath(output_filepath)))
         t0 = time.time()
         chunk = []
-        with open(self.filepath, 'r') as infile, open(output_filepath, 'w') as outfile:
+        if is_gzip:
+            infile = gzip.open(self.filepath, 'rt')
+        else:
+            infile = open(self.filepath, 'r')
+        with infile, open(output_filepath, 'w') as outfile:
             # iterate headers
             if self.vartype == 'SNP':
                 is_vartype = lambda x, y: len(x) == 1 and len(y) == 1
