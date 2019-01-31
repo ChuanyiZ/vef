@@ -2,17 +2,20 @@
 
 Variant Ensemble Filter, an ensemble based filter for VCF files.
 
+VEF is designed for filtering variants of single non-cancerous sample.
+
 ## Installation
 
-Installing in a virtual environmant is recommended.
+Installation in a virtual environment is recommended, e.g. [conda](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html).
+If you're not using a virtual environment and encounter permission issues when installing packages, please try installing with `--user` option, e.g. `pip install --user -r requirement.txt`.
 
 1. Download
     ```bash
-    git clone git@github.com:ChuanyiZ/vef.git
+    git clone https://github.com/ChuanyiZ/vef.git
     ```
 2. install requirements
     ```bash
-    cd path/to/vef
+    cd vef
     pip install -r requirements.txt
     ```
 3. install scikit-allel
@@ -25,13 +28,14 @@ Installing in a virtual environmant is recommended.
     ```
 ## Example scripts
 
-Example python scripts are located in `example` directory. There's a `test.sh` script to run them. VCF files for testing are located in `example/data`, including chromosome 11 and 20 of Human sample NA12878 (HG001) (SNPs and INDELs are already separated). You can also download BAM files from <ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/> and generate VCF of your own by running GATK's best practice pipeline.
+Example python scripts are located in `example` directory. There's a `test.sh` script to run them. VCF files for testing are located in `example/data`, including chromosome 11 and 20 of Human sample NA12878 (HG001) (SNPs and INDELs are already separated). You can also download BAM files from [ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/](ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/) and generate VCF of your own by running GATK's best practice pipeline.
 
 ```bash
 cd example
 ./test.sh
 ```
 
+This bash script calls example script `vef_clf.py` and `vef_apl.py` in `example` directory to train and apply the filter. After running `test.sh`, there will be 2 filter models in `example/data` with `.clf` extension, along with 2 filtered VCF file with `.vef.vcf` extension.
 
 ## Usage
 
@@ -42,11 +46,11 @@ java -jar <path/to/GenomeAnalysisTK.jar> -T SelectVariants -R <path/to/human_g1k
 java -jar <path/to/GenomeAnalysisTK.jar> -T SelectVariants -R <path/to/human_g1k_v37.fasta> -V <path/to/target/vcf> -selectType INDEL -o output.indel.vcf
 ```
 
-For detail document of `SelectVariants`, please go to [GATK's site](https://software.broadinstitute.org/gatk/documentation/tooldocs/3.8-0/org_broadinstitute_gatk_tools_walkers_variantutils_SelectVariants.php)
+For detailed document of `SelectVariants`, please go to [GATK's site](https://software.broadinstitute.org/gatk/documentation/tooldocs/3.8-0/org_broadinstitute_gatk_tools_walkers_variantutils_SelectVariants.php)
 
 ### Training
 
-Ingredients:
+Input files:
 
 - `gold_standard.vcf`: GIAB's NA12878 Gold Standard VCF
 - `specimen.vcf`: Your NA12878 VCF of produced by sequencing technology, alignment tool, pre-processing tool and variant caller you are using.
@@ -64,6 +68,8 @@ Ingredients:
 
 ### Applying
 
+Input files:
+
 - `classifier.clf`: pre-trained classifier.
 - `target.vcf`: target VCF file.
 
@@ -74,7 +80,3 @@ apply.apply()
 apply.write_filtered(target_vcf + ".vef_snp.vcf")
 ```
 
-## Caveats
-
-- [hap.py](https://github.com/Illumina/hap.py) needed
-- Currently only works for single samples

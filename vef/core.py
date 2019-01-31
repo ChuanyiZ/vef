@@ -45,18 +45,14 @@ class _VCFExtract:
         """
         VAR_PREFIX = 'variants/'
         if features is None:
-            # fields, samples, self.header, _ = allel.iter_vcf_chunks(self.filepath, fields='*')
             fields = [(VAR_PREFIX + k) for k in list(self.header.infos.keys()) + ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL']]
             data = allel.read_vcf(self.filepath, fields='*')
             self.features = [ftr for ftr in fields if np.issubdtype(data[ftr].dtype, np.number)]
         else:
             self.features = features
-            # _features = [(VAR_PREFIX + ftr) if '/' not in ftr else ftr for ftr in self.features]
-            # fields, samples, self.header, _ = allel.iter_vcf_chunks(self.filepath, fields='*')
             for i in list(self.features):
                 if i not in self.fields:
                     self.logger.error("Error: {} field not in {}, we have {}".format(i, self.filepath, self.fields))
-                    # print("Error: {} field not in {}".format(i, self.filepath))
                     exit(-1)
             data = allel.read_vcf(self.filepath, fields='*')
         if mode.upper() == 'SNP':
@@ -118,17 +114,14 @@ class VCFDataset:
     def _compare(self, mode):
         self.logger.info("Start extracting label from {}".format(os.path.abspath(self.hap_vcf.filepath)))
         VAR_PREFIX = 'variants/'
-        # fields, samples, headers, _ = allel.iter_vcf_chunks(self.hap_vcf, fields='*')
         mode_list = ['SNP', 'INDEL']
         data = allel.read_vcf(self.hap_vcf.filepath, fields=['calldata/BVT', 'variants/Regions', 'variants/POS', 'variants/CHROM'])
         conf_mask = data['variants/Regions'].astype(bool)
-        # data, _, _ = self.hap_vcf.fetch_data('BOTH', ['calldata/BVT', 'variants/POS', 'variants/CHROM'])
         if mode.upper() in mode_list:
             extract_target_vartype = self._extract_factory(np.where(self.hap_vcf.samples == 'TRUTH')[0][0], mode.upper())
         else:
             self.logger.warning("Warning: mode {} not exist. Using SNP mode.".format(mode))
             extract_target_vartype = self._extract_factory(np.where(self.hap_vcf.samples == 'TRUTH')[0][0], 'SNP')
-            # print("Warning: {}".format(mode))
 
         vartype = np.apply_along_axis(extract_target_vartype, 1, data['calldata/BVT'][conf_mask, :])
         label_list = np.vstack((data['variants/POS'][conf_mask], vartype))
@@ -141,18 +134,7 @@ class VCFDataset:
             _, idx, cnt = np.unique(label_list[key][0, :], return_index=True, return_counts=True)
             label_list[key] = label_list[key][:, idx[cnt <= 1]]
         self.logger.info("Finish extracting label from file")
-        # label_list = label_list[:, np.argsort(label_list[0, :], kind='mergesort')]
-
-        # save
-        # with open(truth_idx_file, 'wb') as f:
-        #     pickle.dump(
-        #         label_list, f, protocol=pickle.HIGHEST_PROTOCOL)
-        # return label_list
-
-        # fields, samples, headers, _ = allel.iter_vcf_chunks(self.specimen_vcf.filepath, fields='*')
-        # fields = [k for k in list(headers.infos.keys()) + ['QUAL']]
         data = allel.read_vcf(self.specimen_vcf.filepath, fields='*')
-        # data, fields, _ = self.specimen_vcf.fetch_data(mode)
 
         self.logger.info("Start extracting variants from {}".format(os.path.abspath(self.specimen_vcf.filepath)))
         # feature selection
@@ -173,15 +155,6 @@ class VCFDataset:
         chrom_list = data[VAR_PREFIX + 'CHROM']
         self.contigs = list(label_list)
         annotes_chrom = {ch: annotes[:, np.where(chrom_list == ch)[0]] for ch in self.contigs}
-
-        # # merge labels
-        # if label_list is None:
-        #     if truth_idx_file is not None:
-        #         with open(truth_idx_file, 'rb') as of:
-        #             label_list = pickle.load(of)
-        #     else:
-        #         print("ERR: no 'truth file' or 'truth index list' usable.")
-        #         exit(1)
 
         for ch in self.contigs:
             if ch not in label_list:
@@ -300,7 +273,6 @@ class VCFApply(_VCFExtract):
         # check features
         this_feature = set(self.features)
         clf_feature = set(self.classifier.features)
-        # sym_diff = this_feature.symmetric_difference(clf_feature)
         if this_feature != clf_feature:
             if len(clf_feature - this_feature) == 0:
                 pass
@@ -320,16 +292,10 @@ class VCFApply(_VCFExtract):
 
         :params output_filepath: output filepath.
         """
-        # pass_index = self.vartype_index[np.where(self.predict_y == 1)[0]]
 
-        # if len(pass_index) == 0:
         if np.sum(self.predict_y) == 0:
             self.logger.error("No passed variants.")
-            # print("Attention! No passed variants.")
             return
-        # last_pass_index = max(pass_index)
-        # is_pass = np.zeros(len_is_pass)
-        # is_pass[pass_index] = 1
         chunk_size = 10000
         is_gzip = self._is_gzip(self.filepath)
         self.logger.info("Start output filtered result to file {}".format(os.path.abspath(output_filepath)))
@@ -366,17 +332,12 @@ class VCFApply(_VCFExtract):
             idx_INFO = fields.index("INFO")
             vcf_reader = csv.reader(infile, delimiter='\t')
             for num_row, row in enumerate(vcf_reader):
-                # if is_vartype(row[idx_REF], row[idx_ALT]):
-                # if num_row <= last_pass_index:
-                    # if is_pass[num_row]:
                 if self.predict_y[num_row]:
                     row[idx_FILTER] = "PASS"
                     row[idx_INFO] += (";VEF={:.4e}".format(self.predict_y_log_proba[num_row, 1]))
                 else:
                     row[idx_FILTER] = "VEF_FILTERED"
                     row[idx_INFO] += (";VEF={:.4e}".format(self.predict_y_log_proba[num_row, 1]))
-                # else:
-                #     row[idx_FILTER] = "VEF_FILTERED"
                 chunk.append(row)
                 if num_row % chunk_size == 0 and num_row > 0:
                     outfile.write('\n'.join(['\t'.join(var) for var in chunk]) + '\n')
@@ -384,4 +345,4 @@ class VCFApply(_VCFExtract):
             outfile.write('\n'.join(['\t'.join(var) for var in chunk]))
         t1 = time.time()
         self.logger.info("Finish output filtered result, time elapsed {:.3f}s".format(t1 - t0))
-        # print("Time elapsed {}s".format(t1 - t0))
+
