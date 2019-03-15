@@ -66,7 +66,7 @@ class _VCFExtract:
             is_vartype = np.repeat(True, data[VAR_PREFIX + 'is_snp'].shape[0])
         vartype_index = np.where(is_vartype)[0]
         annotes = [data[ftr][is_vartype] for ftr in self.features]
-        annotes = np.vstack((c if c.ndim == 1 else c[:, 0] for c in annotes))
+        annotes = np.vstack([c if c.ndim == 1 else c[:, 0] for c in annotes])
         return annotes.transpose(), self.features, vartype_index
 
     @staticmethod
@@ -151,7 +151,7 @@ class VCFDataset:
 
         # merge features, with CHROM, POS
         annotes = [data[ftr] for ftr in [VAR_PREFIX + 'POS'] + self.features]
-        annotes = np.vstack((c if c.ndim == 1 else c[:, 0] for c in annotes))
+        annotes = np.vstack([c if c.ndim == 1 else c[:, 0] for c in annotes])
         chrom_list = data[VAR_PREFIX + 'CHROM']
         self.contigs = list(label_list)
         annotes_chrom = {ch: annotes[:, np.where(chrom_list == ch)[0]] for ch in self.contigs}
@@ -187,8 +187,8 @@ class VCFDataset:
                 if ctg not in self.contigs:
                     self.logger.warning("Requested contig {} not exist.".format(ctg))
                 contig_list.append(ctg)
-        X = np.vstack((self.dataset[ctg]['X'] for ctg in contig_list))
-        y = np.hstack((self.dataset[ctg]['y'] for ctg in contig_list))
+        X = np.vstack([self.dataset[ctg]['X'] for ctg in contig_list])
+        y = np.hstack([self.dataset[ctg]['y'] for ctg in contig_list])
         return X, y
 
     def save(self, output_filepath):
