@@ -58,12 +58,12 @@ Input files:
 - `specimen.vcf`: Your NA12878 VCF of produced by sequencing technology, alignment tool, pre-processing tool and variant caller you are using.
 
 1. Use [hap.py](https://github.com/Illumina/hap.py) to compare `specimen.vcf` against `gold_standard.vcf`, output `compare.vcf`.
-2. Use the VEF package in Python, example snippet as follows, or see `vef_clf.py` in `/example` folder.
+2. Use `vef_clf.py` in `/example` folder (recommended), where you can specify *number of trees* (default 150) and *name of ensemble methods* (default Random Forest), and see help message for details. Otherwise you can use the VEF package in Python, example snippet as follows.
     ```python
     dataset = VCFDataset(path_to_compare_vcf, path_to_specimen_vcf, 'SNP')
     X, y = dataset.get_dataset('*')
 
-    clf = Classifier(dataset.features)
+    clf = Classifier(dataset.features, num_trees, "RF")
     clf.fit(X, y)
     clf.save(path_to_specimen_vcf + ".vef_snp.clf")
     ```
@@ -75,7 +75,7 @@ Input files:
 - `classifier.clf`: pre-trained classifier.
 - `target.vcf`: target VCF file.
 
-Use the VEF package to apply pretrained model on target VCF file, example snippet as follows, or see `vef_apl.py` in `/example` folder.
+Use `vef_apl.py` in `/example` folder (recommended), or use the VEF package to apply pretrained model on target VCF file, example snippet as follows.
 
 ```python
 clf = Classifier.load(clf_file)
@@ -83,4 +83,21 @@ apply = VCFApply(target_vcf, clf, 'SNP')
 apply.apply()
 apply.write_filtered(target_vcf + ".vef_snp.vcf")
 ```
+
+### Grid Search of Hyper-Parameters
+
+See example script `vef_grid_search.py` in `example` folder.
+This script will run K-fold cross-validation on the given VCF files and determine the best number of trees and learning rate (for AdaBoost and GBDT).
+
+Input files:
+
+- `gold_standard.vcf`: GIAB's NA12878 Gold Standard VCF.
+- `specimen.vcf`: Your NA12878 VCF of produced by sequencing technology, alignment tool, pre-processing tool and variant caller you are using.
+
+Options:
+
+- fold: K-fold cross-validation.
+- kind: name of ensemble method.
+- jobs: number of parallel jobs.
+
 
