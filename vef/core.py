@@ -18,7 +18,7 @@ import os
 import binascii
 import gzip
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.externals import joblib
 from sklearn.model_selection import KFold, GridSearchCV
 
@@ -117,6 +117,7 @@ class VCFDataset:
         mode_list = ['SNP', 'INDEL']
         data = allel.read_vcf(self.hap_vcf.filepath, fields=['calldata/BVT', 'variants/Regions', 'variants/POS', 'variants/CHROM'])
         conf_mask = data['variants/Regions'].astype(bool)
+        self.logger.info("Total variants(hap.py): {}, in high-conf region variants: {}".format(conf_mask.shape[0], int(sum(conf_mask))))
         if mode.upper() in mode_list:
             extract_target_vartype = self._extract_factory(np.where(self.hap_vcf.samples == 'TRUTH')[0][0], mode.upper())
         else:
@@ -156,6 +157,8 @@ class VCFDataset:
         self.contigs = list(label_list)
         annotes_chrom = {ch: annotes[:, np.where(chrom_list == ch)[0]] for ch in self.contigs}
 
+        variant_count = 0
+        positive_count= 0
         for ch in self.contigs:
             if ch not in label_list:
                 continue
@@ -166,8 +169,10 @@ class VCFDataset:
                 self.logger.debug("CHROM:{}, {} {}".format(ch, np.shape(annotes_chrom[ch][1:, annotes_idx]), np.shape(label_list[ch][1, label_idx])))
                 idx = ~np.any(np.isnan(self.dataset[ch]), axis=1)
                 self.dataset[ch] = {'X': self.dataset[ch][idx, :-1], 'y': self.dataset[ch][idx, -1]}
+                variant_count += self.dataset[ch]['y'].shape[0]
+                positive_count += sum(self.dataset[ch]['y'])
         # np.savez_compressed(dataset_file, infos=features, chrom_data=dataset)
-        self.logger.info("Finish extracting variants from file")
+        self.logger.info("Finish extracting variants from file, #variants={}, #positive_sample={}, #features={}".format(variant_count, int(positive_count), len(self.features)))
         return self
 
     def get_dataset(self, contigs):
@@ -201,19 +206,30 @@ class VCFDataset:
 
 
 class Classifier:
-    """Random Forest classifier."""
+    """Ensemble classifier."""
 
-    def __init__(self, features, n_trees=150):
-        self.rf = RandomForestClassifier(criterion='gini', max_depth=20, n_estimators=n_trees)
+    def __init__(self, features, n_trees=150, kind="RF"):
+        if kind.upper() == "RF" or kind.upper() == "RANDOMFOREST":
+            self.kind = "RF"
+            self.clf = RandomForestClassifier(criterion='gini', max_depth=20, n_estimators=n_trees)
+        elif kind.upper() == "AB" or kind.upper() == "ADABOOST":
+            self.kind = "AB"
+            self.clf = AdaBoostClassifier(n_estimators=n_trees)
+        elif kind.upper() == "GB" or kind.upper() == "GRADIENTBOOST":
+            self.kind = "GB"
+            self.clf = GradientBoostingClassifier(n_estimators=n_trees)
+        else:
+            logger = logging.getLogger(self.__class__.__name__)
+            logger.error("No such type of classifier exist.")
         self.features = features
 
     def fit(self, X, y, sample_weight=None):
         logger = logging.getLogger(self.__class__.__name__)
         logger.info("Begin training model")
         t0 = time.time()
-        self.rf.fit(X, y, sample_weight=sample_weight)
+        self.clf.fit(X, y, sample_weight=sample_weight)
         logger.info("Training a".format())
-        logger.debug("Importance: {}".format(self.rf.feature_importances_))
+        logger.debug("Importance: {}".format(self.clf.feature_importances_))
         t1 = time.time()
         logger.info("Finish training model")
         logger.info("Elapsed time {:.3f}s".format(t1 - t0))
@@ -223,13 +239,26 @@ class Classifier:
         logger.info("Begin grid search")
         t0 = time.time()
         kfold = KFold(n_splits=k_fold, shuffle=True)
-        parameters = {
-            'n_estimators': list(range(50, 251, 10))
-        }
-        self.rf = GridSearchCV(self.rf, parameters, scoring='f1', n_jobs=n_jobs, cv=kfold, refit=True)
-        self.rf.fit(X, y)
-        print(self.rf.cv_results_, '\n', self.rf.best_params_, '\n', self.rf.grid_scores_, '\n')
-        logger.debug("Grid_scores: {}".format(self.rf.grid_scores_))
+        if self.kind == "RF":
+            parameters = {
+                'n_estimators': list(range(50, 251, 10)),
+            }
+        elif self.kind == "GB":
+            parameters = {
+                'n_estimators': np.arange(50, 251, 10),
+                'learning_rate': np.logspace(-5, 0, 10),
+            }
+        elif self.kind == "AB":
+            parameters = {
+                'n_estimators': np.arange(50, 251, 10),
+                'learning_rate': np.logspace(-4, 0, 10),
+            }
+
+        logger.info(f"Kind: {self.kind}, {self.clf}")
+        self.clf = GridSearchCV(self.clf, parameters, scoring='f1', n_jobs=n_jobs, cv=kfold, refit=True)
+        self.clf.fit(X, y)
+        print(self.clf.cv_results_, '\n', self.clf.best_params_)
+        logger.debug("Grid_scores: {}".format(self.clf.cv_results_))
         t1 = time.time()
         logger.info("Finish training model")
         logger.info("Elapsed time {:.3f}s".format(t1 - t0))
@@ -237,16 +266,16 @@ class Classifier:
     def save(self, output_filepath):
         logger = logging.getLogger(self.__class__.__name__)
         joblib.dump(self, output_filepath)
-        logger.info("Classfier saved at {}".format(os.path.abspath(output_filepath)))
+        logger.info("Classifier saved at {}".format(os.path.abspath(output_filepath)))
 
     def predict(self, *args, **kwargs):
-        return self.rf.predict(*args, **kwargs)
+        return self.clf.predict(*args, **kwargs)
 
     def predict_proba(self, *args, **kwargs):
-        return self.rf.predict_proba(*args, **kwargs)
+        return self.clf.predict_proba(*args, **kwargs)
 
     def predict_log_proba(self, *args, **kwargs):
-        return self.rf.predict_log_proba(*args, **kwargs)
+        return self.clf.predict_log_proba(*args, **kwargs)
 
     @staticmethod
     def load(classifier_path):
