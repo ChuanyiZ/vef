@@ -24,7 +24,8 @@ python vef_grid_search.py --happy path/to/NA12878.vcf.happy.vcf --target path/to
     requiredNamed = parser.add_argument_group("required named arguments")
     requiredNamed.add_argument("--happy", help="hap.py annoted target VCF file", required=True)
     requiredNamed.add_argument("--target", help="target pipeline VCF file", required=True)
-    requiredNamed.add_argument("--mode", help="mode, SNP or INDEL", required=True)
+    requiredNamed.add_argument("--mode", help="mode, SNP or INDEL", required=True,
+            choices=["SNP", "INDEL"])
 
     optional = parser.add_argument_group("optional arguments")
     optional.add_argument("--fold", help="number of k-fold cross validation, default = 5", type=int, default=5)

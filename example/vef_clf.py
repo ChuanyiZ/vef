@@ -24,10 +24,11 @@ python vef_clf.py --happy path/to/NA12878.vcf.happy.vcf --target path/to/NA12878
     requiredNamed = parser.add_argument_group("required named arguments")
     requiredNamed.add_argument("--happy", help="hap.py annoted target VCF file", required=True)
     requiredNamed.add_argument("--target", help="target pipeline VCF file", required=True)
-    requiredNamed.add_argument("--mode", help="mode, SNP or INDEL", required=True)
+    requiredNamed.add_argument("--mode", help="mode, SNP or INDEL", required=True,
+            choices=["SNP", "INDEL"])
 
     optional = parser.add_argument_group("optional arguments")
-    optional.add_argument("-n", "--num_trees", help="number of trees", type=int, default=150)
+    optional.add_argument("-n", "--num_trees", help="number of trees, default = 150", type=int, default=150)
     optional.add_argument("--kind", choices=["RF", "RandomForest", "AB", "AdaBoost", "GB", "GradientBoost"], type=str, default="RF",
             help="kind of ensemble methods, available values: RandomForest (RF), AdaBoost (AB), GradientBoost(GB); default = RF")
 

@@ -26,7 +26,7 @@ python vef_apl.py --clf_file path/to/NA12878.vcf.vef_snp.clf --subject path/to/s
     requiredNamed.add_argument("--clf_file", help="target pipeline VEF filter model", required=True)
     requiredNamed.add_argument("--subject", help="subject VCF file", required=True)
     requiredNamed.add_argument("--suffix", help="suffix of filtered VCF file", required=True)
-    requiredNamed.add_argument("--mode", help="mode, SNP or INDEL", required=True)
+    requiredNamed.add_argument("--mode", help="mode, SNP or INDEL", choices=["SNP", "INDEL"], required=True)
 
     args = parser.parse_args()
     clf_file = args.clf_file
