@@ -36,14 +36,14 @@ If you're not using a virtual environment and encounter permission issues when i
 
 ## Example scripts
 
-Example python scripts are located in the `example` directory. There's a `test.sh` script to run them. VCF files for testing are located in `example/data`, including chromosome 11 and 20 of Human sample NA12878 (HG001) (SNPs and INDELs are already separated). You can also download the corresponding BAM files from [ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/](ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/) and generate the VCF files on your own by running GATK's [best practice pipeline](https://software.broadinstitute.org/gatk/best-practices/).
+Example python scripts are located in the `example/` directory. There's a `test.sh` script to run them. VCF files for testing are located in `example/data`, including chromosome 11 and 20 of Human sample NA12878 (HG001) (SNPs and INDELs are already separated). You can also download the corresponding BAM files from [ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/](ftp://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/10XGenomics/) and generate the VCF files on your own by running GATK's [best practice pipeline](https://software.broadinstitute.org/gatk/best-practices/).
 
 ```bash
 cd example
 ./test.sh
 ```
 
-This bash script calls example script `vef_clf.py` and `vef_apl.py` located in the `example` directory to train and apply the filter, respectively. After running `test.sh`, there will be 2 filter models in `example/data` with the `.clf` extension, along with 2 filtered VCF files with the `.vef.vcf` extension.
+This bash script calls example script `vef_clf.py` and `vef_apl.py` located in the `example/` directory to train and apply the filter, respectively. After running `test.sh`, there will be 2 filter models in `example/data` with the `.clf` extension, along with 2 filtered VCF files with the `.vef.vcf` extension.
 
 The generated `*.vef.vcf` files include a `VEF` score in the INFO field for each variant. This score represents the probability of the variant being correct, calculated by the model. In particular, if $P$ is the probability of being correct, VEF reports the score $\ln(P)$ as `VEF` score. VEF also specifies `VEF_FILTERED` in the FILTER field of the variants that VEF estimates are incorrectly called.
 
@@ -75,7 +75,7 @@ Steps:
     python2 hap.py gold_standard.vcf specimen.snp.vcf -f gold_standard.bed -o compare.snp.vcf -r reference.fasta --no-roc
     ```
 
-2. Use `vef_clf.py` in the `/example` folder (recommended), where you can specify *number of trees* (default 150) and the *ensemble method* (default RF).
+2. Use `vef_clf.py` in the `example/` folder (recommended), where you can specify *number of trees* (default 150) and the *ensemble method* (default RF).
 
     ```bash
     python vef_clf.py --happy compare.snp.vcf --target specimen.snp.vcf --mode SNP --kind <MODEL_NAME> --n <NUM_TREES>
@@ -116,7 +116,7 @@ Input files:
 - `classifier.clf`: pre-trained classifier.
 - `target.snp.vcf` or `target.indel.vcf`: target VCF file.
 
-Use `vef_apl.py` in `/example` folder (recommended).
+Use `vef_apl.py` in `example/` folder (recommended).
 
 ```bash
 python vef_apl.py --clf_file classifier.clf --subject target.snp.vcf --suffix vef --mode SNP
@@ -146,7 +146,7 @@ apply.write_filtered(target_vcf + ".vef_snp.vcf")
 
 ### Grid Search of Hyperparameters
 
-See example script `vef_grid_search.py` in the `example` folder.
+See example script `vef_grid_search.py` in the `example/` folder.
 This script will run K-fold cross-validation on the given VCF files and determine the best number of trees and learning rate.
 
 Input files: (same as training)
@@ -162,7 +162,7 @@ Steps: (similar to training)
     python2 hap.py gold_standard.vcf specimen.vcf -f gold_standard.bed -o compare.vcf -r reference.fasta --no-roc
     ```
 
-2. Use `vef_grid_search.py` in `/example` folder, where you can specify the *ensemble method* (default RF).
+2. Use `vef_grid_search.py` in `example/` folder, where you can specify the *ensemble method* (default RF).
 
     ```bash
     python vef_grid_search.py --happy compare.snp.vcf --target specimen.snp.vcf --mode SNP --fold 5 --jobs 2 --kind <MODEL_NAME>
