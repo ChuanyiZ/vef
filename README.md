@@ -4,6 +4,10 @@ Variant Ensemble Filter, an ensemble based filter for VCF files.
 
 VEF is designed for filtering variants of single non-cancerous samples.
 
+**bioRxiv**: <https://doi.org/10.1101/540286>
+
+All VCF files used for analysis of VEF can be accessed here: <https://doi.org/10.13012/B2IDB-9401259_V1>
+
 ## Installation
 
 Installation in a virtual environment is recommended, e.g., [conda](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html).
